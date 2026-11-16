@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from components.charts import style_figure
+from components.charts import plot_correlation_heatmap, style_figure
 from components.metric_cards import render_kpi_card
 from config.settings import BENCHMARK_INDICES
 from core.data_loader import load_market_data
@@ -14,9 +14,8 @@ from utils.formatting import format_pct, tone_class
 
 
 def render_market_overview_view(data_mode: str = "demo") -> None:
-    """Render broad market indices, heatmaps, and macro regime monitors."""
-    st.markdown('<div class="view-header">MARKET OVERVIEW & MACRO REGIMES</div>', unsafe_allow_html=True)
-    st.caption("Cross-market index tracking for Indian Equities (NSE/BSE) and US Indices.")
+    """Clean, information-dense market overview without text clutter."""
+    st.markdown('<div class="view-title">MARKET OVERVIEW</div>', unsafe_allow_html=True)
 
     index_data = {}
     cols = st.columns(len(BENCHMARK_INDICES))
@@ -28,22 +27,21 @@ def render_market_overview_view(data_mode: str = "demo") -> None:
             if not df.empty:
                 last_val = df["Close"].iloc[-1]
                 daily_chg = df["Close"].pct_change().iloc[-1]
-                vol_20d = df["Close"].pct_change().rolling(20).std().iloc[-1] * (252**0.5)
                 sym_c = "₹" if "NSE" in symbol or "BSE" in symbol else "$"
                 render_kpi_card(
                     label=name,
                     value=f"{sym_c}{last_val:,.0f}",
                     delta=format_pct(daily_chg),
                     delta_tone=tone_class(daily_chg),
-                    subtext=f"20D Vol: {vol_20d*100.0:.1f}%",
+                    tooltip=f"Benchmark symbol: {symbol}",
                 )
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown('<div class="section-title">NORMALIZED MULTI-INDEX CUMULATIVE PERFORMANCE (BASE 100)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="spacer-sm"></div>', unsafe_allow_html=True)
 
-    # Normalized comparison chart
+    # Relative strength chart
+    st.markdown('<div class="card-title">NORMALIZED BENCHMARK TRAJECTORY (BASE 100)</div>', unsafe_allow_html=True)
     norm_fig = go.Figure()
-    colors = ["#38bdf8", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+    colors = ["#22D3EE", "#16C784", "#F59E0B", "#8B5CF6", "#EC4899"]
 
     for (name, df), color in zip(index_data.items(), colors):
         if not df.empty and len(df) > 30:
@@ -58,14 +56,12 @@ def render_market_overview_view(data_mode: str = "demo") -> None:
                 )
             )
 
-    norm_fig = style_figure(norm_fig, title="Multi-Index Relative Strength", height=450)
+    norm_fig = style_figure(norm_fig, title="", height=380)
     st.plotly_chart(norm_fig, use_container_width=True)
 
-    # Volatility & Correlation Overview
-    col_corr, col_stats = st.columns([1.2, 1.0])
+    col_corr, col_stats = st.columns([1.1, 1.0])
 
     with col_corr:
-        st.markdown('<div class="section-title">BENCHMARK CORRELATION MATRIX</div>', unsafe_allow_html=True)
         ret_dict = {
             name: df["Close"].pct_change()
             for name, df in index_data.items()
@@ -73,22 +69,11 @@ def render_market_overview_view(data_mode: str = "demo") -> None:
         }
         ret_df = pd.DataFrame(ret_dict).dropna()
         if not ret_df.empty:
-            corr = ret_df.corr()
-            fig_corr = go.Figure(
-                data=go.Heatmap(
-                    z=corr.values,
-                    x=corr.columns,
-                    y=corr.index,
-                    colorscale="Viridis",
-                    text=corr.values.round(2),
-                    texttemplate="%{text}",
-                )
-            )
-            fig_corr = style_figure(fig_corr, title="Cross-Market Correlations", height=380)
-            st.plotly_chart(fig_corr, use_container_width=True)
+            corr_fig = plot_correlation_heatmap(ret_df.corr())
+            st.plotly_chart(corr_fig, use_container_width=True)
 
     with col_stats:
-        st.markdown('<div class="section-title">MARKET REGIME & VOLATILITY STATUS</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-title">BENCHMARK STATISTICS</div>', unsafe_allow_html=True)
         stat_rows = []
         for name, df in index_data.items():
             if not df.empty and len(df) > 60:
@@ -99,27 +84,24 @@ def render_market_overview_view(data_mode: str = "demo") -> None:
                 cum_ret = (1.0 + ret).cumprod()
                 max_dd = abs(((cum_ret - cum_ret.cummax()) / cum_ret.cummax()).min())
 
-                stat_rows.append(
-                    {
-                        "Index": name,
-                        "Annual Return": ann_ret,
-                        "Annual Volatility": ann_vol,
-                        "Sharpe Ratio": sharpe,
-                        "Max Drawdown": max_dd,
-                    }
-                )
+                stat_rows.append({
+                    "Index": name,
+                    "CAGR": ann_ret,
+                    "Vol": ann_vol,
+                    "Sharpe": sharpe,
+                    "Max DD": max_dd,
+                })
 
         if stat_rows:
             stats_table = pd.DataFrame(stat_rows)
             st.dataframe(
-                stats_table.style.format(
-                    {
-                        "Annual Return": "{:+.2%}",
-                        "Annual Volatility": "{:.2%}",
-                        "Sharpe Ratio": "{:.2f}",
-                        "Max Drawdown": "{:.2%}",
-                    }
-                ),
+                stats_table.style.format({
+                    "CAGR": "{:+.1%}",
+                    "Vol": "{:.1%}",
+                    "Sharpe": "{:.2f}",
+                    "Max DD": "{:.1%}",
+                }),
                 use_container_width=True,
+                hide_index=True,
+                height=260,
             )
-
