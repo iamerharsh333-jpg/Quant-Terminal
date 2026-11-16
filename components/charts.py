@@ -1,41 +1,54 @@
-"""Institutional Dark-Themed Plotly Charts for Quant Terminal."""
+"""Modern Institutional Plotly Charts for Quant Terminal."""
 
 from __future__ import annotations
 
+import calendar
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-CHART_THEME = dict(
-    paper_bgcolor="rgba(11, 17, 32, 0.95)",
-    plot_bgcolor="rgba(15, 23, 42, 0.65)",
-    font=dict(color="#94a3b8", family="Arial, sans-serif"),
-    gridcolor="rgba(148, 163, 184, 0.10)",
+# Exact Design Direction Palette
+THEME = dict(
+    bg="#0B0E14",
+    card_bg="#151B26",
+    border="#252D3A",
+    text_main="#E6EAF0",
+    text_muted="#8792A5",
+    green="#16C784",
+    red="#EA3943",
+    accent="#3861FB",
+    cyan="#22D3EE",
+    amber="#F59E0B",
+    purple="#8B5CF6",
 )
 
 
-def style_figure(fig: go.Figure, title: str = "", height: int = 500) -> go.Figure:
-    """Apply consistent Bloomberg/TradingView dark styling to Plotly figures."""
+def style_figure(fig: go.Figure, title: str = "", height: int = 420) -> go.Figure:
+    """Apply modern institutional TradingView/Bloomberg dark styling."""
     fig.update_layout(
         title=dict(
             text=title,
-            font=dict(color="#f8fafc", size=14, family="Arial, sans-serif"),
+            font=dict(color=THEME["text_main"], size=13, family="'JetBrains Mono', 'Inter', monospace"),
             x=0.01,
             y=0.98,
         ),
-        paper_bgcolor=CHART_THEME["paper_bgcolor"],
-        plot_bgcolor=CHART_THEME["plot_bgcolor"],
-        font=CHART_THEME["font"],
+        paper_bgcolor=THEME["card_bg"],
+        plot_bgcolor=THEME["card_bg"],
+        font=dict(color=THEME["text_muted"], family="'Inter', -apple-system, sans-serif", size=11),
         xaxis=dict(
-            gridcolor=CHART_THEME["gridcolor"],
+            gridcolor=THEME["border"],
+            gridwidth=1,
             showgrid=True,
             zeroline=False,
+            color=THEME["text_muted"],
         ),
         yaxis=dict(
-            gridcolor=CHART_THEME["gridcolor"],
+            gridcolor=THEME["border"],
+            gridwidth=1,
             showgrid=True,
             zeroline=False,
+            color=THEME["text_muted"],
         ),
         legend=dict(
             orientation="h",
@@ -43,9 +56,10 @@ def style_figure(fig: go.Figure, title: str = "", height: int = 500) -> go.Figur
             y=1.02,
             xanchor="right",
             x=1,
-            font=dict(color="#e2e8f0", size=11),
+            font=dict(color=THEME["text_main"], size=10),
+            bgcolor="rgba(0,0,0,0)",
         ),
-        margin=dict(l=45, r=45, t=55, b=40),
+        margin=dict(l=40, r=40, t=45, b=35),
         height=height,
     )
     return fig
@@ -61,22 +75,17 @@ def plot_candlestick_with_indicators(
     show_rsi: bool = False,
     show_macd: bool = False,
 ) -> go.Figure:
-    """
-    Render professional TradingView-style Candlestick chart with volume,
-    moving averages, Bollinger Bands, and optional RSI / MACD subplots.
-    """
-    # Determine rows based on subplots
+    """Interactive Candlestick chart with volume, moving averages, and indicators."""
     extra_rows = (1 if show_rsi else 0) + (1 if show_macd else 0)
     total_rows = 2 + extra_rows
-    row_heights = [0.65, 0.15] + ([0.10] * extra_rows)
-    # Normalize row heights to sum to 1.0
+    row_heights = [0.68, 0.16] + ([0.14] * extra_rows)
     row_heights = [h / sum(row_heights) for h in row_heights]
 
-    subplot_titles = [f"{ticker} OHLCV", "Volume"]
+    subplot_titles = [f"{ticker} Price", "Volume"]
     if show_rsi:
         subplot_titles.append("RSI (14)")
     if show_macd:
-        subplot_titles.append("MACD")
+        subplot_titles.append("MACD (12, 26, 9)")
 
     fig = make_subplots(
         rows=total_rows,
@@ -96,42 +105,40 @@ def plot_candlestick_with_indicators(
             low=df["Low"],
             close=df["Close"],
             name="OHLC",
-            increasing_line_color="#10b981",
-            decreasing_line_color="#ef4444",
-            increasing_fillcolor="#10b981",
-            decreasing_fillcolor="#ef4444",
+            increasing_line_color=THEME["green"],
+            decreasing_line_color=THEME["red"],
+            increasing_fillcolor=THEME["green"],
+            decreasing_fillcolor=THEME["red"],
         ),
         row=1,
         col=1,
     )
 
-    # Overlays: SMA 20, 50, 200
     if show_sma_20 and "SMA_20" in df.columns:
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["SMA_20"], line=dict(color="#38bdf8", width=1.4), name="SMA 20"),
+            go.Scatter(x=df.index, y=df["SMA_20"], line=dict(color=THEME["cyan"], width=1.3), name="SMA 20"),
             row=1,
             col=1,
         )
     if show_sma_50 and "SMA_50" in df.columns:
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["SMA_50"], line=dict(color="#f59e0b", width=1.4), name="SMA 50"),
+            go.Scatter(x=df.index, y=df["SMA_50"], line=dict(color=THEME["amber"], width=1.3), name="SMA 50"),
             row=1,
             col=1,
         )
     if show_sma_200 and "SMA_200" in df.columns:
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["SMA_200"], line=dict(color="#ec4899", width=1.4), name="SMA 200"),
+            go.Scatter(x=df.index, y=df["SMA_200"], line=dict(color=THEME["purple"], width=1.3), name="SMA 200"),
             row=1,
             col=1,
         )
 
-    # Bollinger Bands
     if show_bb and "BB_Upper" in df.columns and "BB_Lower" in df.columns:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
                 y=df["BB_Upper"],
-                line=dict(color="rgba(148, 163, 184, 0.4)", width=1, dash="dot"),
+                line=dict(color="rgba(135, 146, 165, 0.4)", width=1, dash="dot"),
                 name="BB Upper",
             ),
             row=1,
@@ -141,9 +148,9 @@ def plot_candlestick_with_indicators(
             go.Scatter(
                 x=df.index,
                 y=df["BB_Lower"],
-                line=dict(color="rgba(148, 163, 184, 0.4)", width=1, dash="dot"),
+                line=dict(color="rgba(135, 146, 165, 0.4)", width=1, dash="dot"),
                 fill="tonexty",
-                fillcolor="rgba(148, 163, 184, 0.05)",
+                fillcolor="rgba(135, 146, 165, 0.04)",
                 name="BB Lower",
             ),
             row=1,
@@ -152,7 +159,7 @@ def plot_candlestick_with_indicators(
 
     # 2. Volume bar chart
     vol_colors = [
-        "#10b981" if c >= o else "#ef4444"
+        THEME["green"] if c >= o else THEME["red"]
         for c, o in zip(df["Close"], df["Open"])
     ]
     fig.add_trace(
@@ -168,32 +175,29 @@ def plot_candlestick_with_indicators(
     )
 
     curr_row = 3
-    # 3. Optional RSI
     if show_rsi and "RSI_14" in df.columns:
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["RSI_14"], line=dict(color="#a855f7", width=1.5), name="RSI 14"),
+            go.Scatter(x=df.index, y=df["RSI_14"], line=dict(color=THEME["purple"], width=1.4), name="RSI"),
             row=curr_row,
             col=1,
         )
-        # 70 and 30 reference lines
-        fig.add_hline(y=70, line_dash="dash", line_color="rgba(239, 68, 68, 0.5)", row=curr_row, col=1)
-        fig.add_hline(y=30, line_dash="dash", line_color="rgba(16, 185, 129, 0.5)", row=curr_row, col=1)
+        fig.add_hline(y=70, line_dash="dash", line_color=THEME["red"], opacity=0.4, row=curr_row, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color=THEME["green"], opacity=0.4, row=curr_row, col=1)
         curr_row += 1
 
-    # 4. Optional MACD
     if show_macd and "MACD" in df.columns and "MACD_Signal" in df.columns:
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["MACD"], line=dict(color="#38bdf8", width=1.4), name="MACD"),
+            go.Scatter(x=df.index, y=df["MACD"], line=dict(color=THEME["cyan"], width=1.3), name="MACD"),
             row=curr_row,
             col=1,
         )
         fig.add_trace(
-            go.Scatter(x=df.index, y=df["MACD_Signal"], line=dict(color="#fb923c", width=1.4), name="Signal"),
+            go.Scatter(x=df.index, y=df["MACD_Signal"], line=dict(color=THEME["amber"], width=1.3), name="Signal"),
             row=curr_row,
             col=1,
         )
         hist_colors = [
-            "#10b981" if h >= 0 else "#ef4444"
+            THEME["green"] if h >= 0 else THEME["red"]
             for h in df.get("MACD_Hist", [0] * len(df))
         ]
         fig.add_trace(
@@ -203,21 +207,21 @@ def plot_candlestick_with_indicators(
         )
 
     fig.update_xaxes(rangeslider_visible=False)
-    total_height = 560 + (extra_rows * 120)
-    return style_figure(fig, title=f"{ticker} Institutional Chart", height=total_height)
+    total_height = 460 + (extra_rows * 110)
+    return style_figure(fig, title=f"{ticker} Technical Chart", height=total_height)
 
 
 def plot_equity_and_drawdown(
     frame: pd.DataFrame,
-    title: str = "Strategy Performance & Drawdown Analysis",
+    title: str = "Strategy vs Buy & Hold",
 ) -> go.Figure:
-    """Render combined 2-panel chart: Equity Curve above, Underwater Drawdown below."""
+    """Strategy Equity Curve with Drawdown subpanel."""
     fig = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.04,
-        row_heights=[0.70, 0.30],
+        row_heights=[0.72, 0.28],
         subplot_titles=["Portfolio Value ($)", "Drawdown (%)"],
     )
 
@@ -226,7 +230,7 @@ def plot_equity_and_drawdown(
             go.Scatter(
                 x=frame.index,
                 y=frame["equity_strategy"],
-                line=dict(color="#22d3ee", width=2.2),
+                line=dict(color=THEME["cyan"], width=2.0),
                 name="Quant Strategy",
             ),
             row=1,
@@ -236,14 +240,13 @@ def plot_equity_and_drawdown(
             go.Scatter(
                 x=frame.index,
                 y=frame["equity_market"],
-                line=dict(color="#94a3b8", width=1.5, dash="dot"),
+                line=dict(color=THEME["text_muted"], width=1.3, dash="dot"),
                 name="Buy & Hold",
             ),
             row=1,
             col=1,
         )
 
-        # Drawdown panel
         strat_dd_pct = frame["drawdown_strategy"] * 100.0
         mkt_dd_pct = frame["drawdown_market"] * 100.0
 
@@ -251,10 +254,10 @@ def plot_equity_and_drawdown(
             go.Scatter(
                 x=frame.index,
                 y=strat_dd_pct,
-                line=dict(color="#f43f5e", width=1.2),
+                line=dict(color=THEME["red"], width=1.2),
                 fill="tozeroy",
-                fillcolor="rgba(244, 63, 94, 0.20)",
-                name="Strategy Drawdown",
+                fillcolor="rgba(234, 57, 67, 0.15)",
+                name="Strategy DD",
             ),
             row=2,
             col=1,
@@ -263,37 +266,82 @@ def plot_equity_and_drawdown(
             go.Scatter(
                 x=frame.index,
                 y=mkt_dd_pct,
-                line=dict(color="#64748b", width=1.0, dash="dot"),
-                name="Market Drawdown",
+                line=dict(color="rgba(135, 146, 165, 0.4)", width=1.0, dash="dot"),
+                name="Market DD",
             ),
             row=2,
             col=1,
         )
 
-    return style_figure(fig, title=title, height=520)
+    return style_figure(fig, title=title, height=440)
+
+
+def plot_monthly_returns_heatmap(returns_series: pd.Series) -> go.Figure:
+    """Monthly Return Heatmap matrix for performance attribution."""
+    if returns_series.empty or len(returns_series) < 10:
+        return go.Figure()
+
+    # Resample to monthly returns
+    monthly = (1.0 + returns_series).resample("ME").prod() - 1.0
+    monthly_df = pd.DataFrame({
+        "Year": monthly.index.year,
+        "Month": monthly.index.month,
+        "Return": monthly.values * 100.0,
+    })
+
+    pivot = monthly_df.pivot(index="Year", columns="Month", values="Return")
+    month_names = [calendar.month_abbr[m] for m in range(1, 13)]
+    for m in range(1, 13):
+        if m not in pivot.columns:
+            pivot[m] = np.nan
+    pivot = pivot[range(1, 13)]
+    pivot.columns = month_names
+
+    z_vals = pivot.values
+    text_vals = np.where(np.isnan(z_vals), "", np.char.add(np.round(z_vals, 1).astype(str), "%"))
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_vals,
+            x=month_names,
+            y=pivot.index.astype(str),
+            colorscale=[
+                [0.0, THEME["red"]],
+                [0.5, THEME["card_bg"]],
+                [1.0, THEME["green"]],
+            ],
+            zmid=0.0,
+            text=text_vals,
+            texttemplate="%{text}",
+            textfont=dict(color=THEME["text_main"], size=10, family="'JetBrains Mono', monospace"),
+            showscale=False,
+        )
+    )
+    return style_figure(fig, title="Monthly Returns (%)", height=280)
 
 
 def plot_correlation_heatmap(corr_matrix: pd.DataFrame) -> go.Figure:
-    """Render correlation matrix heatmap."""
+    """Asset correlation matrix heatmap."""
     fig = go.Figure(
         data=go.Heatmap(
             z=corr_matrix.values,
             x=corr_matrix.columns,
             y=corr_matrix.index,
-            colorscale=[[0, "#3b82f6"], [0.5, "#0f172a"], [1, "#10b981"]],
+            colorscale=[[0, THEME["accent"]], [0.5, THEME["card_bg"]], [1, THEME["green"]]],
             zmin=-1.0,
             zmax=1.0,
             text=np.round(corr_matrix.values, 2),
             texttemplate="%{text}",
-            textfont=dict(color="#f8fafc", size=12),
+            textfont=dict(color=THEME["text_main"], size=11, family="'JetBrains Mono', monospace"),
+            showscale=False,
         )
     )
-    return style_figure(fig, title="Asset Return Correlation Matrix", height=420)
+    return style_figure(fig, title="Asset Return Correlation", height=350)
 
 
-def plot_feature_importance_bar(df: pd.DataFrame, title: str = "Feature Importance") -> go.Figure:
-    """Horizontal bar chart for top predictive features."""
-    top = df.head(15).iloc[::-1]  # Reverse for top-down descending
+def plot_feature_importance_bar(df: pd.DataFrame, title: str = "Key Drivers") -> go.Figure:
+    """Horizontal bar chart for model drivers."""
+    top = df.head(10).iloc[::-1]
     metric_col = "importance" if "importance" in top.columns else ("abs_coefficient" if "abs_coefficient" in top.columns else top.columns[1])
 
     fig = go.Figure(
@@ -301,11 +349,7 @@ def plot_feature_importance_bar(df: pd.DataFrame, title: str = "Feature Importan
             x=top[metric_col],
             y=top["feature"],
             orientation="h",
-            marker=dict(
-                color=top[metric_col],
-                colorscale="Viridis",
-            ),
+            marker=dict(color=THEME["accent"]),
         )
     )
-    return style_figure(fig, title=title, height=450)
-
+    return style_figure(fig, title=title, height=360)

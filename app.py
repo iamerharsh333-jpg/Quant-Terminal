@@ -1,4 +1,4 @@
-"""QUANT TERMINAL - Institutional Quantitative Research & Stock Analytics Platform."""
+"""QUANT TERMINAL - Modern Institutional Quantitative Trading & Analytics Platform."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-# Custom modules
-from components.metric_cards import render_dashboard_kpis, render_kpi_card
+# Custom Components & Engines
+from components.metric_cards import render_dashboard_top_kpis, render_kpi_card
 from components.sidebar import render_sidebar
 from components.topbar import render_topbar
 from config.settings import APP_CONFIG, BENCHMARK_INDICES, TRADING_CONFIG
@@ -46,287 +46,274 @@ from utils.recommendations import build_recommendation
 logger = logging.getLogger(__name__)
 
 st.set_page_config(
-    page_title="QUANT TERMINAL | Institutional Research",
+    page_title="QUANT TERMINAL",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
-def inject_terminal_css() -> None:
-    """Inject institutional dark terminal styling inspired by Bloomberg and TradingView."""
+def inject_fintech_theme() -> None:
+    """Inject institutional dark theme matching Bloomberg, TradingView, and Linear."""
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
 
         :root {
-            --bg-base: #060911;
-            --bg-card: rgba(13, 20, 36, 0.88);
-            --border-subtle: rgba(148, 163, 184, 0.14);
-            --border-accent: rgba(34, 211, 238, 0.35);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --text-dim: #64748b;
-            --green: #10b981;
-            --red: #ef4444;
-            --cyan: #22d3ee;
-            --amber: #f59e0b;
+            --bg-base: #0B0E14;
+            --bg-sidebar: #10141D;
+            --bg-card: #151B26;
+            --border: #252D3A;
+            --text-main: #E6EAF0;
+            --text-secondary: #8792A5;
+            --positive: #16C784;
+            --negative: #EA3943;
+            --accent: #3861FB;
+            --cyan: #22D3EE;
+            --amber: #F59E0B;
         }
 
         html, body, [class*="css"] {
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-size: 13.5px;
+        }
+
+        .stApp {
             background-color: var(--bg-base);
             color: var(--text-main);
         }
 
-        .stApp {
-            background: linear-gradient(180deg, #060911 0%, #0a0f1d 100%);
-            color: var(--text-main);
-        }
-
         .block-container {
-            padding-top: 1.0rem;
-            padding-bottom: 3.0rem;
-            max-width: 1560px;
+            padding-top: 0.75rem;
+            padding-bottom: 2.5rem;
+            max-width: 1540px;
         }
 
-        /* Topbar styling */
+        /* Top Header */
         .terminal-topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(15, 23, 42, 0.94);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            padding: 0.65rem 1.1rem;
-            margin-bottom: 1.1rem;
-            backdrop-filter: blur(12px);
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.45rem 0.9rem;
+            margin-bottom: 0.85rem;
         }
 
         .topbar-left, .topbar-right {
             display: flex;
             align-items: center;
-            gap: 0.85rem;
+            gap: 0.65rem;
         }
 
         .terminal-logo {
             font-family: 'JetBrains Mono', monospace;
             font-weight: 800;
-            font-size: 1.05rem;
-            letter-spacing: 0.08em;
-            color: #38bdf8;
+            font-size: 0.95rem;
+            letter-spacing: 0.06em;
+            color: var(--text-main);
         }
 
-        .topbar-divider {
-            color: var(--text-dim);
+        .terminal-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            background: rgba(135, 146, 165, 0.12);
+            padding: 1px 5px;
+            border-radius: 3px;
         }
 
-        .ticker-chip {
-            background: rgba(56, 189, 248, 0.12);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            color: #38bdf8;
-            padding: 0.15rem 0.55rem;
-            border-radius: 4px;
+        .ticker-pill {
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            font-size: 0.85rem;
+            color: var(--accent);
+            background: rgba(56, 97, 251, 0.12);
+            border: 1px solid rgba(56, 97, 251, 0.28);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.8rem;
         }
 
-        .market-chip {
-            background: rgba(148, 163, 184, 0.1);
-            color: var(--text-muted);
-            padding: 0.15rem 0.45rem;
+        .market-pill {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: rgba(135, 146, 165, 0.1);
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 0.78rem;
-            font-weight: 600;
+        }
+
+        .time-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
         }
 
         .terminal-badge {
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 0.2rem 0.55rem;
-            border-radius: 4px;
-            letter-spacing: 0.04em;
             font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
         }
 
         .badge-live {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.35);
+            background: rgba(22, 199, 132, 0.12);
+            color: var(--positive);
+            border: 1px solid rgba(22, 199, 132, 0.3);
         }
 
         .badge-demo {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.35);
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
         }
 
-        .provider-info, .timestamp-info {
+        /* Sidebar Customization */
+        [data-testid="stSidebar"] {
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+        }
+
+        .sidebar-brand-box {
+            padding: 0.3rem 0 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.7rem;
+        }
+
+        .brand-title {
+            display: block;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--text-dim);
+            font-weight: 800;
+            font-size: 1.05rem;
+            letter-spacing: 0.05em;
+            color: var(--text-main);
         }
 
-        /* KPI Cards */
-        .terminal-kpi-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            padding: 0.85rem 0.95rem;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-            transition: border-color 0.2s ease;
+        .brand-sub {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
-        .terminal-kpi-card:hover {
-            border-color: rgba(56, 189, 248, 0.35);
+        .sidebar-divider {
+            height: 1px;
+            background-color: var(--border);
+            margin: 0.8rem 0;
+        }
+
+        .sidebar-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            letter-spacing: 0.08em;
+            margin-bottom: 0.4rem;
+        }
+
+        /* Generic Terminal Cards */
+        .terminal-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 0.9rem;
+        }
+
+        .kpi-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .kpi-header {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.68rem;
             font-weight: 700;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            margin-bottom: 0.3rem;
         }
 
-        .kpi-main {
+        .kpi-row {
             display: flex;
             align-items: baseline;
             justify-content: space-between;
-            gap: 0.4rem;
+            margin-top: 0.25rem;
         }
 
         .kpi-value {
             font-size: 1.35rem;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--text-main);
-            letter-spacing: -0.02em;
+            letter-spacing: -0.01em;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .kpi-delta {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            font-weight: 700;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
 
-        .kpi-subtext {
-            font-size: 0.72rem;
-            color: var(--text-dim);
-            margin-top: 0.25rem;
-        }
+        .positive { color: var(--positive) !important; }
+        .negative { color: var(--negative) !important; }
+        .neutral  { color: var(--text-secondary) !important; }
 
-        .positive { color: var(--green) !important; }
-        .negative { color: var(--red) !important; }
-        .neutral  { color: var(--text-muted) !important; }
-
-        /* Sidebar Styling */
-        [data-testid="stSidebar"] {
-            background: #090d16;
-            border-right: 1px solid var(--border-subtle);
-        }
-
-        .sidebar-header {
-            padding: 0.4rem 0 0.8rem 0;
-        }
-
-        .sidebar-title {
-            font-family: 'JetBrains Mono', monospace;
+        .view-title {
             font-size: 1.15rem;
-            font-weight: 800;
-            color: #f8fafc;
-            letter-spacing: 0.05em;
-            margin-top: 0.3rem;
-        }
-
-        .sidebar-subtitle {
-            font-size: 0.76rem;
-            color: var(--text-dim);
-        }
-
-        .sidebar-section-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
             font-weight: 700;
-            color: var(--cyan);
-            letter-spacing: 0.08em;
-            margin: 0.8rem 0 0.4rem 0;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+            margin-bottom: 0.6rem;
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        .section-title {
+        .card-title {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.06em;
-            color: #e2e8f0;
-            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
         }
 
-        .view-header {
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: var(--text-main);
-            letter-spacing: -0.02em;
-            margin-bottom: 0.15rem;
-        }
-
-        .terminal-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            padding: 1.1rem;
-        }
-
-        .signal-banner {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.1rem;
-            font-weight: 800;
-            padding: 0.5rem 0.8rem;
-            border-radius: 6px;
-            margin: 0.6rem 0;
-            border: 1px solid currentColor;
-            display: inline-block;
-        }
-
-        .terminal-list {
-            padding-left: 1.1rem;
-            margin-top: 0.4rem;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            line-height: 1.5;
+        .spacer-sm {
+            height: 0.75rem;
         }
 
         .terminal-disclaimer {
-            background: rgba(245, 158, 11, 0.08);
-            border: 1px solid rgba(245, 158, 11, 0.25);
-            border-radius: 6px;
-            padding: 0.65rem 0.95rem;
-            font-size: 0.78rem;
-            color: #fde68a;
-            line-height: 1.4;
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 4px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.74rem;
+            color: var(--amber);
         }
 
-        .card-copy {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            line-height: 1.5;
-            margin: 0.4rem 0;
-        }
-
-        /* Streamlit components refinement */
+        /* Streamlit Element Overrides */
         div[data-testid="stDataFrame"] {
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
         }
 
         .stButton > button {
-            border-radius: 6px;
+            border-radius: 4px;
             font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
             font-weight: 700;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
+            border: 1px solid var(--border);
+        }
+
+        button[data-baseweb="tab"] {
+            font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 6px 12px;
         }
         </style>
         """,
@@ -356,7 +343,7 @@ def execute_quant_pipeline(
 
     split = time_series_train_test_split(feature_set.X, feature_set.y, test_size=0.20)
 
-    # Train all 4 model families
+    # Train 4 models
     rf_model = train_model(split.X_train, split.y_train)
     lr_model = train_logistic_regression_model(split.X_train, split.y_train)
     xgb_model = train_xgboost_model(split.X_train, split.y_train) if is_xgboost_available() else None
@@ -407,27 +394,23 @@ def execute_quant_pipeline(
         }
         backtests_dict[name] = bk_res
 
-        comparison_rows.append(
-            {
-                "model": name,
-                "accuracy": class_metrics["accuracy"],
-                "precision": class_metrics["precision"],
-                "recall": class_metrics["recall"],
-                "f1": class_metrics["f1"],
-                "strategy_total_return": bk_res.metrics.get("strategy_total_return", 0.0),
-                "strategy_sharpe_ratio": bk_res.metrics.get("strategy_sharpe_ratio", 0.0),
-                "strategy_max_drawdown": bk_res.metrics.get("strategy_max_drawdown", 0.0),
-                "strategy_annualized_return": bk_res.metrics.get("strategy_annualized_return", 0.0),
-                "buy_hold_total_return": bk_res.metrics.get("buy_and_hold_total_return", 0.0),
-                "total_trades": bk_res.metrics.get("total_trades", 0.0),
-                "win_rate": bk_res.metrics.get("win_rate", 0.0),
-                "percent_time_in_market": bk_res.metrics.get("percent_time_in_market", 0.0),
-            }
-        )
+        comparison_rows.append({
+            "model": name,
+            "accuracy": class_metrics["accuracy"],
+            "precision": class_metrics["precision"],
+            "recall": class_metrics["recall"],
+            "f1": class_metrics["f1"],
+            "strategy_total_return": bk_res.metrics.get("strategy_total_return", 0.0),
+            "strategy_sharpe_ratio": bk_res.metrics.get("strategy_sharpe_ratio", 0.0),
+            "strategy_max_drawdown": bk_res.metrics.get("strategy_max_drawdown", 0.0),
+            "strategy_annualized_return": bk_res.metrics.get("strategy_annualized_return", 0.0),
+            "buy_hold_total_return": bk_res.metrics.get("buy_and_hold_total_return", 0.0),
+            "total_trades": bk_res.metrics.get("total_trades", 0.0),
+            "win_rate": bk_res.metrics.get("win_rate", 0.0),
+            "percent_time_in_market": bk_res.metrics.get("percent_time_in_market", 0.0),
+        })
 
     comparison_frame = pd.DataFrame(comparison_rows)
-
-    # Feature Importance for Random Forest
     rf_importance = get_random_forest_feature_importance(rf_model, split.X_train.columns)
     lr_coefficients = get_logistic_regression_coefficients(lr_model, split.X_train.columns)
 
@@ -446,13 +429,11 @@ def execute_quant_pipeline(
 
 
 def main() -> None:
-    inject_terminal_css()
+    inject_fintech_theme()
 
-    # Data mode state
     if "data_provider_mode" not in st.session_state:
         st.session_state["data_provider_mode"] = "demo"
 
-    # Sidebar inputs
     controls = render_sidebar()
 
     active_view = controls["active_view"]
@@ -471,9 +452,8 @@ def main() -> None:
 
     cache_key = f"{ticker}_{horizon}_{buy_thresh}_{sell_thresh}_{data_mode}"
 
-    # Auto-run pipeline or run on click
     if "pipeline_results" not in st.session_state or controls["run_strategy"] or st.session_state.get("last_cache_key") != cache_key:
-        with st.spinner(f"Quant Engine processing {ticker} ({selected_model})..."):
+        with st.spinner("Processing Strategy..."):
             try:
                 results = execute_quant_pipeline(
                     symbol=ticker,
@@ -496,10 +476,9 @@ def main() -> None:
 
     pipeline = st.session_state.get("pipeline_results")
     if not pipeline:
-        st.warning("Please execute strategy to view terminal analytics.")
+        st.warning("Execute strategy to view terminal analytics.")
         return
 
-    # Extract pipeline context
     prices_df = pipeline["prices_df"]
     provider = pipeline["provider"]
     latest_features = pipeline["latest_features"]
@@ -508,12 +487,10 @@ def main() -> None:
     comparison_frame = pipeline["comparison_frame"]
     rf_importance = pipeline["rf_importance"]
 
-    # Active model state
     active_model_obj = models.get(selected_model, models["Random Forest"])
     active_backtest = backtests.get(selected_model, backtests["Random Forest"])
     active_eval = pipeline["evaluations"].get(selected_model, pipeline["evaluations"]["Random Forest"])
 
-    # Latest prediction for active model
     latest_prob = float(predict_proba(active_model_obj, latest_features).iloc[0])
     latest_sig = str(
         predict_signals(
@@ -541,13 +518,12 @@ def main() -> None:
         sell_threshold=sell_thresh,
     )
 
-    # Predictions ledger table
     preds_table = pd.concat(
         [
-            pipeline["split"].y_test.rename("actual_target"),
-            active_eval["predictions"],
-            active_eval["probabilities"],
-            active_eval["signals"],
+            pipeline["split"].y_test.rename("target"),
+            active_eval["predictions"].rename("pred"),
+            active_eval["probabilities"].rename("prob"),
+            active_eval["signals"].rename("signal"),
         ],
         axis=1,
     )
@@ -560,8 +536,8 @@ def main() -> None:
         is_synthetic=provider.is_synthetic,
     )
 
-    # 2. View Routing Across the 10 Sections
-    if "1. Dashboard" in active_view:
+    # 2. View Routing
+    if "Overview" in active_view:
         render_dashboard_view(
             selected_ticker=ticker,
             market_code=market_code,
@@ -575,11 +551,11 @@ def main() -> None:
             comparison_frame=comparison_frame,
             data_mode=data_mode,
         )
-    elif "2. Market Overview" in active_view:
+    elif "Markets" in active_view:
         render_market_overview_view(data_mode=data_mode)
-    elif "3. Stock Analysis" in active_view:
+    elif "Stock Analysis" in active_view:
         render_stock_analysis_view(selected_ticker=ticker, prices_df=prices_df)
-    elif "4. ML Predictions" in active_view:
+    elif "Predictions" in active_view:
         render_predictions_view(
             selected_ticker=ticker,
             selected_model=selected_model,
@@ -593,26 +569,26 @@ def main() -> None:
             feature_importance_df=rf_importance,
             predictions_table=preds_table,
         )
-    elif "5. Model Comparison" in active_view:
+    elif "Model Comparison" in active_view:
         render_model_comparison_view(
             selected_ticker=ticker,
             comparison_frame=comparison_frame,
             all_backtests=backtests,
         )
-    elif "6. Strategy Backtesting" in active_view:
+    elif "Backtesting" in active_view:
         render_backtesting_view(
             selected_ticker=ticker,
             selected_model=selected_model,
             backtest_result=active_backtest,
             initial_capital=capital,
         )
-    elif "7. Portfolio Analytics" in active_view:
+    elif "Portfolio" in active_view:
         render_portfolio_view(data_mode=data_mode)
-    elif "8. Risk Analytics" in active_view:
+    elif "Risk Analytics" in active_view:
         render_risk_view(selected_ticker=ticker, prices_df=prices_df, data_mode=data_mode)
-    elif "9. Watchlist" in active_view:
+    elif "Watchlist" in active_view:
         render_watchlist_view(data_mode=data_mode)
-    elif "10. About / Settings" in active_view:
+    elif "Settings" in active_view:
         render_settings_view()
 
 

@@ -5,19 +5,15 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from config.settings import INDIAN_EQUITIES, US_EQUITIES
 from core.data_loader import load_market_data
 from core.feature_engineering import make_features
 from core.model_engine import predict_signals, train_model
-from utils.formatting import format_currency, format_pct, tone_class
 
 
 def render_watchlist_view(data_mode: str = "demo") -> None:
-    """Render dynamic market watchlist with technical indicators and ML signal ratings."""
-    st.markdown('<div class="view-header">QUANT WATCHLIST & OPPORTUNITY SCANNER</div>', unsafe_allow_html=True)
-    st.caption("Cross-asset universe monitor with real-time volatility and directional conviction signals.")
+    """Clean multi-ticker scanner grid."""
+    st.markdown('<div class="view-title">WATCHLIST SCANNER</div>', unsafe_allow_html=True)
 
-    # Session State Watchlist initialization
     if "watchlist_symbols" not in st.session_state:
         st.session_state["watchlist_symbols"] = [
             "RELIANCE.NS",
@@ -29,20 +25,17 @@ def render_watchlist_view(data_mode: str = "demo") -> None:
             "NVDA",
         ]
 
-    # Add custom ticker bar
     c_add1, c_add2 = st.columns([3, 1])
     with c_add1:
-        new_ticker = st.text_input("Add Ticker to Watchlist", placeholder="e.g. TATAMOTORS.NS or TSLA").strip().upper()
+        new_ticker = st.text_input("Add Ticker", placeholder="e.g. TATAMOTORS.NS or TSLA", label_visibility="collapsed").strip().upper()
     with c_add2:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         if st.button("Add Ticker", use_container_width=True) and new_ticker:
             if new_ticker not in st.session_state["watchlist_symbols"]:
                 st.session_state["watchlist_symbols"].append(new_ticker)
-                st.success(f"Added {new_ticker} to watchlist.")
+                st.rerun()
 
     symbols = st.session_state["watchlist_symbols"]
 
-    # Compute Watchlist Metrics
     watchlist_rows = []
     for sym in symbols:
         try:
@@ -52,32 +45,26 @@ def render_watchlist_view(data_mode: str = "demo") -> None:
                 daily_chg = float(df["Close"].pct_change().iloc[-1])
                 ret_5d = float((df["Close"].iloc[-1] / df["Close"].iloc[-5]) - 1.0) if len(df) >= 5 else 0.0
                 vol_20d = float(df["Close"].pct_change().rolling(20).std().iloc[-1] * (252**0.5))
-                high_52w = float(df["High"].tail(252).max())
-                low_52w = float(df["Low"].tail(252).min())
                 cur_sym = "₹" if ".NS" in sym else "$"
 
-                # Lightweight quick ML signal
                 try:
                     f_set = make_features(df, horizon=3)
                     if len(f_set.X) > 50:
-                        rf = train_model(f_set.X.iloc[:-1], f_set.y.iloc[:-1], n_estimators=30, max_depth=4)
+                        rf = train_model(f_set.X.iloc[:-1], f_set.y.iloc[:-1], n_estimators=25, max_depth=3)
                         sig = predict_signals(rf, f_set.X.tail(1)).iloc[0]
                     else:
-                        sig = "NEUTRAL"
+                        sig = "HOLD"
                 except Exception:
-                    sig = "NEUTRAL"
+                    sig = "HOLD"
 
-                watchlist_rows.append(
-                    {
-                        "Ticker": sym,
-                        "Price": f"{cur_sym}{last_p:,.2f}",
-                        "1D Change": daily_chg,
-                        "5D Return": ret_5d,
-                        "20D Volatility": vol_20d,
-                        "52W Range": f"{cur_sym}{low_52w:,.1f} - {cur_sym}{high_52w:,.1f}",
-                        "Quant Signal": sig,
-                    }
-                )
+                watchlist_rows.append({
+                    "Ticker": sym,
+                    "Price": f"{cur_sym}{last_p:,.2f}",
+                    "1D Change": daily_chg,
+                    "5D Return": ret_5d,
+                    "20D Vol": vol_20d,
+                    "Signal": sig,
+                })
         except Exception:
             pass
 
@@ -86,33 +73,20 @@ def render_watchlist_view(data_mode: str = "demo") -> None:
 
         def style_signal(val: str) -> str:
             if val == "BUY":
-                return "color: #10b981; font-weight: bold;"
+                return "color: #16C784; font-weight: 700;"
             elif val == "SELL":
-                return "color: #ef4444; font-weight: bold;"
-            return "color: #94a3b8;"
+                return "color: #EA3943; font-weight: 700;"
+            return "color: #8792A5;"
 
-        st.markdown('<div class="section-title">ACTIVE WATCHLIST GRID</div>', unsafe_allow_html=True)
+        def color_num(val):
+            return "color: #16C784;" if val > 0 else ("color: #EA3943;" if val < 0 else "color: #8792A5;")
+
         st.dataframe(
-            wl_df.style.format(
-                {
-                    "1D Change": "{:+.2%}",
-                    "5D Return": "{:+.2%}",
-                    "20D Volatility": "{:.1%}",
-                }
-            ).map(style_signal, subset=["Quant Signal"]),
+            wl_df.style.format({
+                "1D Change": "{:+.2%}",
+                "5D Return": "{:+.2%}",
+                "20D Vol": "{:.1%}",
+            }).map(style_signal, subset=["Signal"]).map(color_num, subset=["1D Change", "5D Return"]),
             use_container_width=True,
+            hide_index=True,
         )
-
-    # Option to clear or reset watchlist
-    if st.button("Reset Watchlist to Defaults"):
-        st.session_state["watchlist_symbols"] = [
-            "RELIANCE.NS",
-            "TCS.NS",
-            "INFY.NS",
-            "HDFCBANK.NS",
-            "AAPL",
-            "MSFT",
-            "NVDA",
-        ]
-        st.rerun()
-
