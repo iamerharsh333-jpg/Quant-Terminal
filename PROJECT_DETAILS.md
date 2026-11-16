@@ -206,15 +206,13 @@ It connects:
 Run command:
 
 ```bash
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/python main.py
+python main.py
 ```
 
 Run with a custom ticker:
 
 ```bash
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/python main.py --symbol TCS.NS --start 2018-01-01 --end 2024-12-31
+python main.py --symbol TCS.NS --start 2018-01-01 --end 2024-12-31
 ```
 
 Useful CLI options:
@@ -238,8 +236,7 @@ Streamlit UI for the full project.
 Run command:
 
 ```bash
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/streamlit run app.py
+streamlit run app.py
 ```
 
 Then open:
@@ -370,14 +367,9 @@ brew install libomp
 Create virtual environment:
 
 ```bash
-cd '/Users/harshtiwari/Desktop/project finance'
 python3 -m venv .venv
-```
-
-Install dependencies:
-
-```bash
-.venv/bin/python -m pip install pandas numpy scikit-learn yfinance matplotlib streamlit xgboost
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 Run Streamlit app:

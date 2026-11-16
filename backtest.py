@@ -1,8 +1,17 @@
-"""Backward-compatible backtesting API.
+"""Backtesting engine module (backward compatible)."""
 
-The production implementation now lives in ``backtesting.engine``. This wrapper
-keeps existing imports such as ``from backtest import run_backtest`` working.
-"""
+from __future__ import annotations
 
-from backtesting.engine import *  # noqa: F401,F403
+from core.backtesting_engine import (
+    BacktestResult,
+    calculate_performance_metrics,
+    plot_equity_curve,
+    run_backtest,
+)
 
+__all__ = [
+    "BacktestResult",
+    "run_backtest",
+    "calculate_performance_metrics",
+    "plot_equity_curve",
+]

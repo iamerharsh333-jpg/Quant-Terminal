@@ -1,321 +1,230 @@
-# Quant-Terminal
-Build a machine learning dashboard that predicts short-horizon stock direction, converts probabilities into BUY, SELL, or HOLD signals, and evaluates strategy behavior against buy-and-hold.
-Stock Prediction & Backtesting System
-Project Purpose
-This project is a Python and Streamlit based stock prediction and backtesting system.
-It downloads historical stock data, creates technical-analysis features, trains machine
-learning classifiers, converts model probabilities into trading signals, backtests those
-signals, and compares strategy performance against buy-and-hold.
+# QUANT TERMINAL
 
-The current default stock is RELIANCE.NS, and the default date range is from
-2018-01-01 to 2024-12-31.
+**Institutional Quantitative Research, Machine Learning Directional Forecasting & Portfolio Analytics Platform**
 
-Main Capabilities
-Download daily OHLCV stock data from Yahoo Finance using yfinance.
-Cache downloaded data locally in data_cache/.
-Build technical features using pandas.
-Predict 3-day forward return direction.
-Train and compare three classifiers:
-Random Forest
-XGBoost
-Logistic Regression
-Generate trading signals from predicted probabilities:
-BUY if probability of price going up is greater than 0.6
-SELL if probability of price going up is less than 0.4
-HOLD otherwise
-Backtest signals with transaction costs and fixed position sizing.
-Compare the strategy with buy-and-hold.
-Show results in a Streamlit UI.
-Export predictions, metrics, comparison tables, and equity-curve charts.
-Project Files
-data.py
-Handles stock data loading.
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.42+-red)
+![Scikit-Learn](https://img.shields.io/badge/scikit--learn-1.4+-orange)
+![XGBoost](https://img.shields.io/badge/XGBoost-2.0+-green)
+![License](https://img.shields.io/badge/License-MIT-purple)
 
-Important functions and constants:
+---
 
-RELIANCE_SYMBOL = "RELIANCE.NS"
-RELIANCE_START = "2018-01-01"
-RELIANCE_END = "2024-12-31"
-load_price_data(...)
-load_reliance_data(...)
-What it does:
+## 1. Executive Summary
 
-Downloads OHLCV data using yfinance.
-Keeps only Open, High, Low, Close, and Volume.
-Normalizes Yahoo Finance column formats.
-Saves cached CSV files in data_cache/.
-Loads cached data on repeat runs unless refresh=True.
-features.py
-Creates all model input features and the binary target.
+**QUANT TERMINAL** is a production-grade quantitative research dashboard engineered with Bloomberg Terminal and TradingView aesthetics. It provides institutional quantitative researchers, data scientists, and portfolio managers with an end-to-end environment for:
 
-Current forecast horizon:
+- **Cross-Market Equities Support**: Indian Equities (NSE symbols, e.g. `RELIANCE.NS`, `TCS.NS`, `INFY.NS`, `HDFCBANK.NS`) and US Equities (`AAPL`, `MSFT`, `NVDA`, `TSLA`, etc.).
+- **Rigorous ML Directional Forecasting**: Random Forest, XGBoost, Logistic Regression, and Histogram Gradient Boosting with strictly chronological train/test partitioning, TimeSeriesSplit CV, and embargo purging to prevent lookahead bias.
+- **Realistic Backtesting Engine**: Multi-asset backtesting with execution lag ($t+1$), position turnover accounting, transaction costs (bps), and slippage modeling.
+- **Portfolio Analytics & Risk Budgeting**: Multi-stock portfolio construction, correlation matrices, Marginal Contribution to Risk (MCR), and Percentage Risk Contributions.
+- **Parametric & Historical Risk Analytics**: 95% & 99% Value at Risk (VaR), Conditional VaR (Expected Shortfall), CAPM Beta, Jensen's Alpha, and rolling volatility/Sharpe ratios.
+- **Zero-Dependency Demo Mode**: Works **100% offline out-of-the-box** using a realistic stochastic volatility synthetic data generator. **No API keys or internet connection are required to evaluate or run the system.**
 
-DEFAULT_HORIZON = 3
-Target logic:
+---
 
-target_return = (future_close / current_close) - 1
-target = 1 if target_return > 0 else 0
-So the model predicts whether the stock price will be higher after the next
-3 trading days.
+## 2. Architecture & Codebase Layout
 
-Feature groups:
+```
+Quant-Terminal/
+├── app.py                      # Main Streamlit application with 10-view institutional terminal
+├── main.py                     # CLI pipeline runner with multi-stock support
+├── requirements.txt            # Production pinned dependencies
+├── pytest.ini                  # Pytest configuration
+├── Dockerfile                  # Container deployment specification
+├── .dockerignore               # Docker exclusions
+├── .env.example                # Template for optional external API keys
+├── .gitignore                  # Git privacy & cache exclusions
+├── README.md                   # System documentation
+│
+├── config/                     # Central configuration & parameters
+│   ├── __init__.py
+│   └── settings.py             # TradingConfig, MLConfig, APIConfig, asset universes
+│
+├── core/                       # Core quantitative computation engines
+│   ├── __init__.py
+│   ├── data_provider.py        # BaseDataProvider, SyntheticDataProvider, YahooFinanceProvider
+│   ├── data_loader.py          # Unified data loader with automatic offline fallback
+│   ├── feature_engineering.py  # 30+ technical & momentum features, SMA, BB, RSI, MACD, ATR
+│   ├── model_engine.py         # Chronological ML training, calibration, TimeSeriesSplit
+│   ├── backtesting_engine.py   # Event/vectorized simulation with lag, turnover friction & ledger
+│   ├── portfolio_engine.py     # Multi-asset portfolio analytics & risk contribution
+│   └── risk_engine.py          # VaR, CVaR, Beta, Alpha, and rolling dynamics
+│
+├── components/                 # Reusable dark-theme UI components
+│   ├── __init__.py
+│   ├── topbar.py               # Institutional top header with status badges & metadata
+│   ├── sidebar.py              # Persistent navigation & strategy parameter controls
+│   ├── metric_cards.py         # Terminal KPI cards with tone formatting
+│   └── charts.py               # TradingView-styled Plotly charts (Candlesticks, Drawdown, etc.)
+│
+├── pages_custom/               # Dedicated views for the 10 sidebar destinations
+│   ├── __init__.py
+│   ├── dashboard_view.py       # Global benchmarks, KPIs, equity curve, synthesis
+│   ├── market_overview_view.py # Macro indices, correlation matrix, volatility status
+│   ├── stock_analysis_view.py  # Interactive candlestick chart with toggleable indicators
+│   ├── predictions_view.py     # ML conviction meters, feature importances, evaluation matrix
+│   ├── model_comparison_view.py# Multi-classifier test-set metrics and equity curves
+│   ├── backtesting_view.py     # Drawdown underwater charts, friction ledger, trade metrics
+│   ├── portfolio_view.py       # Multi-asset allocator, donut weights, risk attribution
+│   ├── risk_view.py            # VaR (95/99), CVaR (95/99), CAPM Beta, Alpha, rolling charts
+│   ├── watchlist_view.py       # Multi-ticker scanner with quick-signals & 20D volatility
+│   └── settings_view.py        # Data mode switcher, cache purger, API credentials status
+│
+├── utils/                      # Helper utilities
+│   ├── __init__.py
+│   ├── formatting.py           # Financial formatting (%, currency, decimals, tone classes)
+│   ├── validation.py           # OHLCV checks and ticker normalization
+│   ├── caching.py              # Disk and memory caching
+│   └── recommendations.py      # Rule-grounded quantitative trade recommendation engine
+│
+├── tests/                      # Automated test suite (24 unit & integration tests)
+│   ├── test_data_provider.py
+│   ├── test_validation.py
+│   ├── test_features.py
+│   ├── test_models.py
+│   ├── test_backtesting.py
+│   ├── test_portfolio.py
+│   ├── test_risk.py
+│   └── test_pipeline_integration.py
+│
+└── data_cache/                 # Local CSV cache directory (git-ignored)
+```
 
-Return features:
-ret_1d
-ret_5d
-ret_10d
-log_ret_1d
-Moving average features:
-close_vs_ma_5
-close_vs_ma_10
-close_vs_ma_20
-ma_5_vs_ma_20
-MACD features:
-macd_line
-macd_signal
-macd_hist
-Bollinger Band features:
-bb_band_width
-bb_percent_b
-RSI features:
-rsi_14
-rsi_7
-rsi_14_scaled
-ATR features:
-atr_14
-atr_14_normalized
-Volatility features:
-volatility_5d
-volatility_10d
-volatility_20d
-volatility_60d
-volatility_ratio_5d_20d
-annualized_volatility_20d
-annualized_volatility_60d
-Price structure features:
-high_low_spread
-close_open_spread
-Volume features:
-volume_change
-volume_ratio_5d
-volume_ratio_20d
-volume_trend_5d
-dollar_volume_ratio_20d
-obv_change_5d
-Important functions:
+---
 
-build_feature_frame(...)
-make_features(...)
-model.py
-Handles model training, prediction, probability output, signal generation, and model
-interpretation.
+## 3. Data Architecture: No API Keys Required
 
-Models:
+Quant Terminal is architected around a provider pattern (`core/data_provider.py`) with three distinct operating modes:
 
-Random Forest classifier with GridSearchCV and TimeSeriesSplit.
-Logistic Regression with StandardScaler.
-XGBoost classifier.
-Important functions:
+1. **Demo Mode (Default)**:
+   - Uses an offline **Synthetic Market Data Engine** driven by Geometric Brownian Motion with GARCH-style stochastic volatility clustering and log-normal volume.
+   - Guaranteed to work anywhere with **zero network access and zero API keys**.
+   - Output is transparently tagged in the UI with a yellow `● DEMO MODE (SYNTHETIC)` badge to ensure data integrity.
+2. **Historical Data Mode**:
+   - Fetches historical market data via `yfinance` with automated local disk caching.
+   - If an internet connection or external endpoint fails, the system automatically and gracefully falls back to the synthetic demo provider without crashing.
+3. **External API Mode (Future Adapters)**:
+   - Plug-and-play placeholders for commercial data vendors (AlphaVantage, Polygon, Tiingo, Zerodha Kite).
+   - Disabled until valid credentials are added to environment variables or `.env`.
 
-time_series_train_test_split(...)
-train_model(...)
-train_xgboost_model(...)
-train_logistic_regression_model(...)
-predict(...)
-predict_proba(...)
-predict_signals(...)
-evaluate_classifier(...)
-get_random_forest_feature_importance(...)
-get_logistic_regression_coefficients(...)
-The train/test split is time-based and does not shuffle data.
+---
 
-Signal logic:
+## 4. Machine Learning & Quantitative Modeling
 
-BUY if prob_up > 0.6
-SELL if prob_up < 0.4
-HOLD otherwise
-backtest.py
-Simulates trading based on model predictions.
+### Target Definition
+Binary forward-return direction over configurable horizon $H$ (default = 3 trading days):
 
-Backtest assumptions:
+$$\text{Target Return}_t = \frac{\text{Close}_{t+H}}{\text{Close}_t} - 1.0$$
 
-Default transaction cost: 0.001, meaning 0.1%
-Default position size: 1.0, meaning 100% of portfolio on BUY
-BUY means long the stock
-SELL means hold cash by default
-HOLD means stay flat in cash
-Optional shorting is available through short_on_sell=True
-Important functions:
+$$\text{Target}_t = \begin{cases} 1 & \text{if } \text{Target Return}_t > 0 \\ 0 & \text{otherwise} \end{cases}$$
 
-run_backtest(...)
-calculate_performance_metrics(...)
-plot_equity_curve(...)
-Metrics calculated:
+### Technical Feature Set
+- **Returns**: 1-day, 5-day, 10-day percentage returns, 1-day log returns.
+- **Moving Average Ratios**: Price vs. SMA 5, SMA 10, SMA 20, SMA 50, and SMA 5 vs. 20.
+- **MACD**: 12-26-9 MACD line, signal line, and histogram.
+- **Bollinger Bands**: 20-day mean, standard deviation, band width, and %B oscillator.
+- **Momentum**: 14-day and 7-day Relative Strength Index (RSI) using Wilder smoothing.
+- **Volatility**: 5-day, 10-day, 20-day, 60-day rolling return standard deviation, annualized 20d & 60d volatility, and 14-day Average True Range (ATR).
+- **Volume & Spreads**: High-Low spread, Close-Open spread, Volume ratios (5d, 20d), 5-day volume trend, dollar volume ratio, and On-Balance Volume (OBV) 5-day change.
 
-Strategy total return
-Strategy Sharpe ratio
-Strategy max drawdown
-Strategy annualized return
-Buy-and-hold total return
-Buy-and-hold Sharpe ratio
-Buy-and-hold max drawdown
-Strategy vs buy-and-hold
-Percent time in market
-Total trades
-Total transaction cost paid
-main.py
-Command-line pipeline runner.
+### Prevention of Data Leakage
+- **Strict Chronological Splitting**: Holdout test set uses the final 20% of the timeline (`shuffle=False`).
+- **Embargo Gap**: Includes an embargo buffer between training and test sets to eliminate boundary label leakage from multi-day forward targets.
+- **Isolated Feature Scaling**: `StandardScaler` is fitted strictly on training data inside scikit-learn `Pipeline` objects.
 
-It connects:
+---
 
-Data loading
-Feature engineering
-Time-based train/test split
-Model training
-Signal generation
-Backtesting
-Metrics reporting
-CSV, JSON, and chart exports
-Run command:
+## 5. Backtesting Engine & Accounting Correctness
 
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/python main.py
-Run with a custom ticker:
+To reflect institutional reality, the backtesting engine enforces:
+- **Execution Lag**: Signals computed at bar $t$ are executed at bar $t+1$ (open/close).
+- **Turnover-Based Costs**: Transaction costs (e.g. 10 bps) and slippage (e.g. 5 bps) are applied only on position changes:
 
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/python main.py --symbol TCS.NS --start 2018-01-01 --end 2024-12-31
-Useful CLI options:
+$$\text{Friction}_t = |\text{Position}_t - \text{Position}_{t-1}| \times (\text{Cost Rate} + \text{Slippage Rate})$$
 
---symbol
---start
---end
---horizon
---test-size
---buy-threshold
---sell-threshold
---transaction-cost
---position-size
---refresh-data
---output-dir
-app.py
-Streamlit UI for the full project.
+- **Static Hold Conservation**: Holding an existing long position incurs zero repeated friction.
+- **Ledger Metrics**: Computes Total Return, CAGR, Annualized Volatility, Sharpe Ratio, Sortino Ratio, Maximum Drawdown, Calmar Ratio, Win Rate, Profit Factor, Total Trades, and Total Friction Paid.
 
-Run command:
+---
 
-cd '/Users/harshtiwari/Desktop/project finance'
-.venv/bin/streamlit run app.py
-Then open:
+## 6. Local Installation & Startup
 
-http://localhost:8501
-UI sections:
+### Step 1: Clone Repository
+```bash
+git clone https://github.com/iamerharsh333-jpg/Quant-Terminal.git
+cd Quant-Terminal
+```
 
-Input
-dropdown stock ticker selector
-custom ticker option
-Model Results
-accuracy for Random Forest, XGBoost, and Logistic Regression
-Latest Prediction
-latest predicted signal
-confidence percentage
-latest feature date
-latest feature values
-Performance Metrics
-model comparison table
-Classification Metrics
-accuracy, precision, recall, and F1
-Backtest Metrics
-strategy return, market return, Sharpe ratio, and max drawdown
-Recent Predictions
-tabs for Random Forest, XGBoost, and Logistic Regression
-Model Interpretation
-Random Forest feature importance
-Logistic Regression coefficients
-Graph
-equity curve comparing strategies against market
-Available ticker options in the UI:
-
-RELIANCE.NS
-TCS.NS
-INFY.NS
-HDFCBANK.NS
-AAPL
-MSFT
-Custom ticker
-Output Files
-Outputs are saved in:
-
-outputs/
-Common output files:
-
-predictions_<SYMBOL>.csv
-predictions_random_forest_<SYMBOL>.csv
-predictions_xgboost_<SYMBOL>.csv
-predictions_logistic_regression_<SYMBOL>.csv
-backtest_<SYMBOL>.csv
-backtest_random_forest_<SYMBOL>.csv
-backtest_xgboost_<SYMBOL>.csv
-backtest_logistic_regression_<SYMBOL>.csv
-metrics_<SYMBOL>.json
-model_comparison_<SYMBOL>.csv
-equity_curve_<SYMBOL>.png
-equity_curve_random_forest_<SYMBOL>.png
-equity_curve_xgboost_<SYMBOL>.png
-equity_curve_logistic_regression_<SYMBOL>.png
-random_forest_feature_importance_<SYMBOL>.csv
-logistic_regression_coefficients_<SYMBOL>.csv
-Multi-stock comparison outputs:
-
-multi_stock_model_comparison.csv
-multi_stock_best_by_return.csv
-Multi-Stock Comparison
-The project has been run on:
-
-RELIANCE.NS
-TCS.NS
-INFY.NS
-HDFCBANK.NS
-Important note:
-
-HDFC.NS no longer returns active Yahoo Finance data, so the project uses
-HDFCBANK.NS for the HDFC comparison.
-
-Latest comparison summary:
-
-Stock	Symbol	Best Model	Strategy Return	Buy and Hold	Vs Buy and Hold
-RELIANCE	RELIANCE.NS	Random Forest	11.66%	-10.49%	22.15%
-TCS	TCS.NS	Random Forest	44.15%	95.74%	-51.60%
-INFY	INFY.NS	Random Forest	45.01%	188.61%	-143.60%
-HDFC	HDFCBANK.NS	XGBoost	8.50%	47.64%	-39.14%
-Overall model averages from that run:
-
-Model	Avg Accuracy	Avg F1	Avg Strategy Return	Avg Sharpe
-Random Forest	0.505	0.544	26.56%	1.104
-XGBoost	0.508	0.511	24.23%	0.870
-Logistic Regression	0.490	0.386	5.43%	0.533
-Dependencies
-Main Python packages:
-
-pandas
-numpy
-scikit-learn
-yfinance
-matplotlib
-streamlit
-xgboost
-On macOS, XGBoost also required:
-
-brew install libomp
-Setup Commands
-Create virtual environment:
-
-cd '/Users/harshtiwari/Desktop/project finance'
+### Step 2: Create and Activate Virtual Environment
+```bash
 python3 -m venv .venv
-Install dependencies:
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-.venv/bin/python -m pip install pandas numpy scikit-learn yfinance matplotlib streamlit xgboost
-Run Streamlit app:
+### Step 3: Install Dependencies
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
-.venv/bin/streamlit run app.py
-Run CLI pipeline:
+### Step 4: Run the Interactive Dashboard
+```bash
+streamlit run app.py
+```
+Open your browser at `http://localhost:8501`.
 
-.venv/bin/python main.py
+### Step 5: (Optional) Run CLI Pipeline
+To run the terminal research pipeline from the terminal:
+```bash
+python main.py --symbol RELIANCE.NS --horizon 3
+```
+To run multi-stock comparison across Indian equities:
+```bash
+python main.py --multi-stock
+```
+
+---
+
+## 7. Running Automated Tests
+
+Run the full pytest suite (24 automated unit and integration tests):
+```bash
+pytest
+```
+Expected output:
+```text
+tests/test_backtesting.py ...                                            [ 12%]
+tests/test_data_provider.py ...                                          [ 25%]
+tests/test_features.py ....                                              [ 41%]
+tests/test_models.py ....                                                [ 58%]
+tests/test_pipeline_integration.py .                                     [ 62%]
+tests/test_portfolio.py ..                                               [ 70%]
+tests/test_risk.py ..                                                    [ 79%]
+tests/test_validation.py .....                                           [100%]
+
+============================== 24 passed in 2.10s ==============================
+```
+
+---
+
+## 8. Deployment Guide
+
+### A. Streamlit Community Cloud
+1. Push your repository to GitHub.
+2. Sign in to [share.streamlit.io](https://share.streamlit.io).
+3. Select this repository, branch `main`, and main file `app.py`.
+4. The application boots in **Demo Mode** with zero external setup.
+
+### B. Docker Deployment
+Build and run the containerized terminal locally or on Cloud Run / Render / AWS:
+```bash
+docker build -t quant-terminal .
+docker run -p 8501:8501 -e PORT=8501 quant-terminal
+```
+
+---
+
+## 9. Regulatory & Research Disclaimer
+
+Quant Terminal is an open quantitative research and educational platform. It does not provide financial advice, make broker connections, or execute live market orders. Market forecasts are statistical estimates; users must exercise rigorous independent risk management.
